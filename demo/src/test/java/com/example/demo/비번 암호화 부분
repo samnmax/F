@@ -1,0 +1,75 @@
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    runtimeOnly 'com.h2database:h2'
+}
+
+package com.example.demo.config;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.web.SecurityFilterChain;
+
+@Configuration
+public class SecurityConfig {
+
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        http
+            .csrf(csrf -> csrf.disable()) // HTML 폼 테스트용, 실제 운영에서는 설정 필요
+            .authorizeHttpRequests(auth -> auth
+                .requestMatchers("/user/login", "/user/register", "/login.html", "/register.html", "/", "/index.html").permitAll()
+                .anyRequest().authenticated()
+            )
+            .formLogin(login -> login.disable()) // 기본 로그인폼 사용 안 함
+            .logout(logout -> logout.logoutUrl("/user/logout"))
+            .httpBasic(Customizer.withDefaults());
+
+        return http.build();
+    }
+}
+
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+
+@Service
+public class UserService {
+
+    @Autowired
+    private UserRepository userRepository;
+
+    private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+
+    public boolean login(String username, String password, HttpSession session) {
+        User user = userRepository.findById(username).orElse(null);
+        if (user != null && passwordEncoder.matches(password, user.getPassword())) {
+            session.setAttribute("loginUser", user);
+            return true;
+        }
+        return false;
+    }
+
+    public void register(User user) {
+        // 비밀번호 암호화 후 저장
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
+        userRepository.save(user);
+    }
+
+    public void logout(HttpSession session) {
+        session.invalidate();
+    }
+
+    public User getLoginUser(HttpSession session) {
+        return (User) session.getAttribute("loginUser");
+    }
+}
+
+spring.h2.console.enabled=true
+spring.datasource.url=jdbc:h2:mem:testdb
+spring.datasource.driverClassName=org.h2.Driver
+spring.datasource.username=sa
+spring.datasource.password=
+spring.jpa.hibernate.ddl-auto=update
