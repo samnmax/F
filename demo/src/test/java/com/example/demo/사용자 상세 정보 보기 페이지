@@ -1,0 +1,50 @@
+@GetMapping("/user/{username}")
+public String viewUserDetail(@PathVariable String username) {
+    User user = userRepository.findById(username).orElse(null);
+    if (user == null) {
+        return """
+            <html>
+              <body>
+                <h2>사용자 정보</h2>
+                <p style='color:red;'>해당 사용자가 존재하지 않습니다.</p>
+                <a href="/admin/dashboard">← 관리자 대시보드로</a>
+              </body>
+            </html>
+        """;
+    }
+
+    return """
+        <html>
+          <body>
+            <h2>사용자 상세 정보</h2>
+            <ul>
+              <li><strong>아이디:</strong> %s</li>
+              <li><strong>이메일:</strong> %s</li>
+              <li><strong>권한:</strong> %s</li>
+            </ul>
+            <a href="/admin/dashboard">← 관리자 대시보드로</a>
+          </body>
+        </html>
+    """.formatted(user.getUsername(), user.getEmail(), user.getRole());
+}
+
+<form method="get" action="/admin/user/" onsubmit="event.preventDefault(); viewDetail();">
+<h4>사용자 상세 조회</h4>
+사용자명: <input type="text" id="detailUser"><br>
+<button type="submit">조회</button>
+</form>
+<script>
+function viewDetail() {
+  const username = document.getElementById("detailUser").value;
+  if (username.trim()) {
+    window.location.href = "/admin/user/" + encodeURIComponent(username);
+  }
+}
+</script>
+
+.requestMatchers("/admin/**").hasRole("ADMIN")
+
+사용자 상세 정보
+- 아이디: testuser
+- 이메일: testuser@example.com
+- 권한: ROLE_USER
