@@ -1,0 +1,82 @@
+{
+  "username": "testuser",
+  "role": "ROLE_ADMIN"
+}
+
+@RestController
+@RequestMapping("/admin")
+public class AdminController {
+
+    @Autowired
+    private UserRepository userRepository;
+
+    // 사용자 전체 조회 API (이미 존재할 수 있음)
+    @GetMapping("/users")
+    public List<User> listAllUsers() {
+        return userRepository.findAll();
+    }
+
+    // ✅ 사용자 권한 수정
+    @PostMapping("/change-role")
+    public String changeUserRole(@RequestBody RoleChangeRequest request) {
+        User user = userRepository.findById(request.getUsername()).orElse(null);
+        if (user == null) {
+            return "해당 사용자가 존재하지 않습니다.";
+        }
+
+        user.setRole(request.getRole()); // 예: "ROLE_ADMIN", "ROLE_USER"
+        userRepository.save(user);
+        return "권한이 성공적으로 변경되었습니다.";
+    }
+
+    // 관리자 대시보드 페이지
+    @GetMapping("/dashboard")
+    public String adminPage() {
+        return """
+            <html>
+              <body>
+                <h2>관리자 대시보드</h2>
+                <p>여긴 ROLE_ADMIN 사용자만 접근할 수 있습니다.</p>
+                <p><a href="/admin/users">[모든 사용자 조회]</a></p>
+                <form method="post" action="/admin/change-role" onsubmit="event.preventDefault(); changeRole();">
+                  <h4>권한 변경</h4>
+                  사용자명: <input type="text" id="username"><br>
+                  새로운 권한: 
+                  <select id="role">
+                    <option value="ROLE_USER">ROLE_USER</option>
+                    <option value="ROLE_ADMIN">ROLE_ADMIN</option>
+                  </select><br>
+                  <button type="submit">권한 변경</button>
+                </form>
+                <div id="result"></div>
+                <script>
+                  async function changeRole() {
+                    const res = await fetch("/admin/change-role", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        username: document.getElementById("username").value,
+                        role: document.getElementById("role").value
+                      })
+                    });
+                    const text = await res.text();
+                    document.getElementById("result").innerText = text;
+                  }
+                </script>
+              </body>
+            </html>
+        """;
+    }
+
+    // 요청을 받기 위한 DTO 클래스
+    static class RoleChangeRequest {
+        private String username;
+        private String role;
+        public String getUsername() { return username; }
+        public void setUsername(String username) { this.username = username; }
+        public String getRole() { return role; }
+        public void setRole(String role) { this.role = role; }
+    }
+}
+
+.requestMatchers("/admin/**").hasRole("ADMIN")
