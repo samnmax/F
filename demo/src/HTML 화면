@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>메인 화면</title>
+</head>
+<body>
+    <h1>메인 페이지</h1>
+    <a href="login.html">로그인</a> |
+    <a href="register.html">회원가입</a> |
+    <a href="#" onclick="logout()">로그아웃</a> |
+    <a href="#" onclick="getMyInfo()">내 정보 확인</a>
+    <div id="userInfo"></div>
+
+    <script>
+        function logout() {
+            fetch("/user/logout")
+                .then(res => res.text())
+                .then(msg => alert(msg));
+        }
+
+        function getMyInfo() {
+            fetch("/user/me")
+                .then(res => res.json())
+                .then(data => {
+                    const userDiv = document.getElementById("userInfo");
+                    if (data.username) {
+                        userDiv.innerHTML = `<p>아이디: ${data.username}, 이메일: ${data.email}</p>`;
+                    } else {
+                        userDiv.innerHTML = `<p>${data}</p>`;
+                    }
+                });
+        }
+    </script>
+</body>
+</html>
+
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>회원가입</title>
+</head>
+<body>
+    <h2>회원가입</h2>
+    <form id="registerForm">
+        아이디: <input type="text" id="username"><br>
+        비밀번호: <input type="password" id="password"><br>
+        이메일: <input type="email" id="email"><br>
+        <button type="submit">가입</button>
+    </form>
+    <a href="index.html">← 메인으로</a>
+
+    <script>
+        document.getElementById("registerForm").addEventListener("submit", function (e) {
+            e.preventDefault();
+            const user = {
+                username: document.getElementById("username").value,
+                password: document.getElementById("password").value,
+                email: document.getElementById("email").value
+            };
+
+            fetch("/user/register", {
+                method: "POST",
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(user)
+            })
+            .then(res => res.text())
+            .then(msg => {
+                alert(msg);
+                window.location.href = "index.html";
+            });
+        });
+    </script>
+</body>
+</html>
+
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>로그인</title>
+</head>
+<body>
+    <h2>로그인</h2>
+    <form id="loginForm">
+        아이디: <input type="text" id="username"><br>
+        비밀번호: <input type="password" id="password"><br>
+        <button type="submit">로그인</button>
+    </form>
+    <a href="index.html">← 메인으로</a>
+
+    <script>
+        document.getElementById("loginForm").addEventListener("submit", function (e) {
+            e.preventDefault();
+            const params = new URLSearchParams();
+            params.append("username", document.getElementById("username").value);
+            params.append("password", document.getElementById("password").value);
+
+            fetch("/user/login?" + params.toString(), {
+                method: "POST"
+            })
+            .then(res => res.text())
+            .then(msg => {
+                alert(msg);
+                if (msg.includes("성공")) {
+                    window.location.href = "index.html";
+                }
+            });
+        });
+    </script>
+</body>
+</html>
