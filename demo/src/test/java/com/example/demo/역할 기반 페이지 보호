@@ -1,0 +1,72 @@
+package com.example.demo.entity;
+
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import lombok.Data;
+
+@Entity
+@Data
+public class User {
+    @Id
+    private String username;
+    private String password;
+    private String email;
+
+    // 사용자 역할: "ROLE_USER", "ROLE_ADMIN"
+    private String role;
+}
+
+public void register(User user) {
+    user.setPassword(passwordEncoder.encode(user.getPassword()));
+    
+    // 기본 역할 설정
+    if (user.getRole() == null) {
+        user.setRole("ROLE_USER");
+    }
+
+    userRepository.save(user);
+}
+
+@Override
+public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+    User user = userRepository.findById(username)
+        .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+
+    return new org.springframework.security.core.userdetails.User(
+        user.getUsername(),
+        user.getPassword(),
+        Collections.singletonList(new SimpleGrantedAuthority(user.getRole()))  // 역할 부여
+    );
+}
+
+@Bean
+public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    http
+        .csrf(csrf -> csrf.disable())
+        .authorizeHttpRequests(auth -> auth
+            .requestMatchers("/", "/index.html", "/login.html", "/user/register", "/register.html").permitAll()
+            .requestMatchers("/admin/**").hasRole("ADMIN")
+            .requestMatchers("/user/**").hasRole("USER")
+            .anyRequest().authenticated()
+        )
+        .formLogin(form -> form
+            .loginPage("/login.html")
+            .loginProcessingUrl("/login")
+            .defaultSuccessUrl("/", true)
+            .failureUrl("/login.html?error=true")
+            .permitAll()
+        )
+        .logout(logout -> logout
+            .logoutUrl("/logout")
+            .logoutSuccessUrl("/")
+            .invalidateHttpSession(true)
+            .clearAuthentication(true)
+        );
+    return http.build();
+}
+
+<h2>관리자 페이지</h2>
+<p>이 페이지는 ROLE_ADMIN 사용자만 볼 수 있습니다.</p>
+
+<h2>일반 사용자 페이지</h2>
+<p>이 페이지는 ROLE_USER 사용자만 볼 수 있습니다.</p>
