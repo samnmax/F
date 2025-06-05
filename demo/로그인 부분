@@ -1,0 +1,113 @@
+package com.example.demo.entity;
+
+import jakarta.persistence.*;
+import lombok.*;
+
+@Entity
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class User {
+    
+    @Id
+    private String username;
+
+    private String password;
+
+    private String email;
+}
+
+package com.example.demo.repository;
+
+import com.example.demo.entity.User;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface UserRepository extends JpaRepository<User, String> {
+    User findByUsernameAndPassword(String username, String password);
+}
+package com.example.demo.service;
+
+import com.example.demo.entity.User;
+import com.example.demo.repository.UserRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import jakarta.servlet.http.HttpSession;
+
+@Service
+public class UserService {
+
+    @Autowired
+    private UserRepository userRepository;
+
+    public boolean login(String username, String password, HttpSession session) {
+        User user = userRepository.findByUsernameAndPassword(username, password);
+        if (user != null) {
+            session.setAttribute("loginUser", user);
+            return true;
+        }
+        return false;
+    }
+
+    public void logout(HttpSession session) {
+        session.invalidate();
+    }
+
+    public void register(User user) {
+        userRepository.save(user);
+    }
+
+    public User getLoginUser(HttpSession session) {
+        return (User) session.getAttribute("loginUser");
+    }
+}
+
+package com.example.demo.controller;
+
+import com.example.demo.entity.User;
+import com.example.demo.service.UserService;
+import jakarta.servlet.http.HttpSession;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/user")
+public class UserController {
+
+    @Autowired
+    private UserService userService;
+
+    // 회원가입
+    @PostMapping("/register")
+    public String register(@RequestBody User user) {
+        userService.register(user);
+        return "회원가입 완료";
+    }
+
+    // 로그인
+    @PostMapping("/login")
+    public String login(@RequestParam String username, @RequestParam String password, HttpSession session) {
+        boolean success = userService.login(username, password, session);
+        return success ? "로그인 성공 - 메인 화면으로 이동" : "로그인 실패 - 다시 시도하세요";
+    }
+
+    // 로그아웃
+    @GetMapping("/logout")
+    public String logout(HttpSession session) {
+        userService.logout(session);
+        return "로그아웃 되었습니다 - 메인 화면으로 이동";
+    }
+
+    // 로그인 사용자 정보 조회
+    @GetMapping("/me")
+    public Object getMyInfo(HttpSession session) {
+        User user = userService.getLoginUser(session);
+        return user != null ? user : "로그인되지 않았습니다.";
+    }
+}
+spring.datasource.url=jdbc:h2:mem:testdb
+spring.datasource.driverClassName=org.h2.Driver
+spring.datasource.username=sa
+spring.datasource.password=
+spring.jpa.database-platform=org.hibernate.dialect.H2Dialect
+spring.h2.console.enabled=true
